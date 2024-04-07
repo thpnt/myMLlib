@@ -1,14 +1,59 @@
 import numpy as np
 from myMLlib.utils.utils import euclidean_distance
 
+import numpy as np
+
 class KMeans():
-    # Constructor
+    """
+    KMeans clustering algorithm implementation.
+    
+    Parameters:
+    - k_clusters: int, optional (default=3)
+        The number of clusters to form.
+    - max_iter: int, optional (default=1000)
+        The maximum number of iterations to perform.
+    - convergence_criterion: float, optional (default=0.001)
+        The convergence criterion to check for convergence.
+    
+    Attributes:
+    - k_clusters: int
+        The number of clusters.
+    - max_iter: int
+        The maximum number of iterations.
+    - convergence_criterion: float
+        The convergence criterion.
+    - centroids: numpy.ndarray
+        The final centroids of the clusters.
+    """
+    
     def __init__(self, k_clusters=3, max_iter=1000, convergence_criterion=0.001):
+        """
+        Initialize the KMeans object.
+        
+        Parameters:
+        - k_clusters: int, optional (default=3)
+            The number of clusters to form.
+        - max_iter: int, optional (default=1000)
+            The maximum number of iterations to perform.
+        - convergence_criterion: float, optional (default=0.001)
+            The convergence criterion to check for convergence.
+        """
         self.k_clusters = k_clusters
         self.max_iter = max_iter
+        self.convergence_criterion = convergence_criterion
     
-    # Method to fit the model
     def fit(self, X) -> np.ndarray:
+        """
+        Fit the KMeans model to the given data.
+        
+        Parameters:
+        - X: numpy.ndarray
+            The input data to fit the model.
+        
+        Returns:
+        - centroids: numpy.ndarray
+            The final centroids of the clusters.
+        """
         # Initialize random centroids with shape (k_clusters, n_features)
         n_features = X.shape[1]
         centroids  = np.random.rand((self.k_clusters, n_features))
@@ -45,6 +90,16 @@ class KMeans():
     
     # Method to predict the cluster of a new data point
     def predict(self, X) -> np.ndarray:
+        """
+        Predicts the cluster labels for the given data points.
+
+        Parameters:
+        X (numpy.ndarray): The input data points to be clustered.
+
+        Returns:
+        numpy.ndarray: An array of cluster labels assigned to each data point.
+
+        """
         # Assign cluster to each data point based on the closest centroid
         clusters = np.zeros([X.shape[0], 2])
         for i,e in enumerate(X):
