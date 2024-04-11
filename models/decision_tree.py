@@ -44,7 +44,7 @@ class DecisionTree():
 
     """
     
-    def __init__(self, max_depth=None, min_samples_split=2, min_gain=0):
+    def __init__(self, max_depth=None, min_samples_split=2, min_gain=0, max_features=None):
         ''' Constructor '''
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
@@ -53,6 +53,7 @@ class DecisionTree():
         self.impurity_calculation = None
         self.leaf_value_calculation = None
         self.score_calculation = None
+        self.max_features = max_features
         
         
     def build_tree(self, dataset, depth=0) -> Node:
@@ -144,13 +145,24 @@ class DecisionTree():
         n_features = len(dataset[0]) -1
         max_info_gain = -float("inf")
         
-        for i in range(n_features):
-            for threshold in np.unique(dataset[:, i]):
-                info_gain = self.impurity_calculation(dataset, i, threshold)
-                if info_gain > max_info_gain:
-                    best_feature = i
-                    best_threshold = threshold
-                    max_info_gain = info_gain
+        
+        if self.max_features is None:
+            for i in range(n_features):
+                for threshold in np.unique(dataset[:, i]):
+                    info_gain = self.impurity_calculation(dataset, i, threshold)
+                    if info_gain > max_info_gain:
+                        best_feature = i
+                        best_threshold = threshold
+                        max_info_gain = info_gain
+        elif self.max_features is not None:
+            subset = np.random.choice(n_features, self.max_features, replace=False)
+            for i in subset:
+                for threshold in np.unique(dataset[:, i]):
+                    info_gain = self.impurity_calculation(dataset, i, threshold)
+                    if info_gain > max_info_gain:
+                        best_feature = i
+                        best_threshold = threshold
+                        max_info_gain = info_gain
                     
         return best_feature, best_threshold, max_info_gain
     
@@ -180,7 +192,7 @@ class DecisionTree():
         
 class TreeClassifier(DecisionTree):
     def __init__(self, max_depth=None, min_samples_split=2, min_gain=0):
-        super().__init__(max_depth, min_samples_split, min_gain)
+        super().__init__(max_depth, min_samples_split, min_gain, max_features=None)
         self.impurity_calculation = self.information_gain
         self.leaf_value_calculation = self.most_common_label
         self.score_calculation = self.accuracy_score
@@ -263,7 +275,7 @@ class TreeClassifier(DecisionTree):
         y_pred = self.predict(X)
         accuracy = np.sum(y_pred == y) / len(y)
         return accuracy
-    
+
     
     
 
