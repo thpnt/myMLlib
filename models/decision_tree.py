@@ -74,7 +74,7 @@ class DecisionTree():
         # Initialize the root node
         n_samples, n_features = dataset.shape
         # Check for stopping conditions
-        if n_samples >= self.min_samples_split and depth >= self.max_depth:
+        if n_samples >= self.min_samples_split or depth >= self.max_depth:
             # Find the best split
             best_split = self.best_split(dataset)
             # If impurity calculation is superior to the threshold, split the dataset
