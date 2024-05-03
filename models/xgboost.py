@@ -1,107 +1,323 @@
 import numpy as np
 
+class MeanSquaredError():
+    """
+    MeanSquaredError is a class that represents the mean squared error loss function.
+    It provides methods to calculate the loss, gradient, and hessian for the loss function.
+    """
 
+    def loss(self, y_true, y_pred):
+        """
+        Calculates the mean squared error loss.
+
+        Parameters:
+        - y_true: The true values.
+        - y_pred: The predicted values.
+
+        Returns:
+        - The mean squared error loss.
+        """
+        return np.mean((y_true - y_pred)**2)/2
+    
+    def gradient(self, y_true, y_pred):
+        """
+        Calculates the gradient of the mean squared error loss.
+
+        Parameters:
+        - y_true: The true values.
+        - y_pred: The predicted values.
+
+        Returns:
+        - The gradient of the mean squared error loss.
+        """
+        return - (y_true - y_pred)
+    
+    def hessian(self, y_true, y_pred):
+        """
+        Calculates the hessian of the mean squared error loss.
+
+        Parameters:
+        - y_true: The true values.
+        - y_pred: The predicted values.
+
+        Returns:
+        - The hessian of the mean squared error loss.
+        """
+        return np.ones_like(y_true)
+    
+
+    
 class Node():
-    def __init__(self, feature=None, threshold=None, value=None, left=None, right=None):
-        self.feature = feature
+    """
+    Node is a class that represents a node in the XGBoost tree.
+    Each node contains information about the feature index, threshold, value, and left and right child nodes.
+    """
+
+    def __init__(self, feature_index=None, threshold=None, value=None):
+        """
+        Initializes a Node object.
+
+        Parameters:
+        - feature_index: The index of the feature used for splitting at this node.
+        - threshold: The threshold value used for splitting at this node.
+        - value: The value associated with this node (used for leaf nodes).
+        """
+        self.feature_index = feature_index
         self.threshold = threshold
         self.value = value
-        self.left = left
-        self.right = right
-        
-        
-class XGBoostRegressor():
-    def __init__(self,n_estimators, learning_rate = 0.01, _lambda=1,
-                 gamma = 0, max_depth=8, min_gain=0.05, min_samples_split=2):
+        self.left = None
+        self.right = None
+
+class XGBoostTree():
+    """
+    XGBoostTree is a class that represents a single decision tree in the XGBoost algorithm.
+    """
+
+    def __init__(self, _lambda=1, gamma=0, max_depth=32, min_samples_split=2):
+        """
+        Initialize the XGBoostTree object.
+
+        Parameters:
+        - _lambda (float): Regularization parameter lambda. Default is 1.
+        - gamma (float): Minimum loss reduction required to make a further partition on a leaf node. Default is 0.
+        - max_depth (int): Maximum depth of the tree. Default is 32.
+        - min_samples_split (int): Minimum number of samples required to split an internal node. Default is 2.
+        """
         self.max_depth = max_depth
-        self.min_gain = min_gain
         self.min_samples_split = min_samples_split
-        self.root = None
-        self.compute_leaf_value = None
-        self.information_gain = None
-        self.alpha = _lambda
+        self._lambda = _lambda
+        self.tree = None
         self.gamma = gamma
-        self.learning_rate = learning_rate
-        
- 
-        
-    def fit(self, X, y, depth=0) -> Node:
-        # Initialize the root node
-        n_features, n_samples = X.shape[1], X.shape[0]
-        #  If the stopping criterion not met
-        if n_samples > self.min_samples_split and depth < self.max_depth:
-            # Find the best split
-            best_split = self._best_split(X, y)
-            if best_split['gain'] > self.min_gain:
-                X_left, X_right, y_left, y_right = self._split(X, y, best_split['feature'], best_split['threshold'])
-                left = self.fit(X_left, y_left, depth+1)
-                right = self.fit(X_right, y_right, depth+1)
-                return Node(feature=best_split['feature'], threshold=best_split['threshold'], left=left, right=right)
-        
-        # Return leaf node
-        return Node(value=self._output_value(y))
-    
-    def _similarity_score(self, y):
+
+    def best_split(self, X, y):
         """
-        Compute the similarity score for the leaf node.
+        Find the best split point for a given feature in the dataset.
+
+        Parameters:
+        - X (numpy.ndarray): Input features.
+        - y (numpy.ndarray): Target variable.
+
+        Returns:
+        - best_feature (int): Index of the best feature to split on.
+        - best_threshold (float): Best threshold value for the split.
+        - best_gain (float): Gain achieved by the best split.
         """
-        denominator = (len(y) + self._lambda)
-        score = np.sum(y, axis=0)**2 / denominator
-        return score
-        
-    def _best_split(self, X, y):
-        """
-        Find the best split for the node.
-        """
-        best_split = {'gain': None, 'feature': None, 'threshold': None}
-        n_features = X.shape[1]
-        max_info_gain = -float('inf')
-    
-        # For each feature
-        for i in range(n_features):
-            # Possible thresholds are the quantiles of the feature values
-            feature_values = X[:, i]
-            thresholds = np.percentile(feature_values, np.arange(0, 100, 3))
-            # Find the best threshold
+        best_feature, best_threshold, best_gain = None, None, 0
+        n_samples, n_features = X.shape
+
+        for feature in range(n_features):
+            thresholds = np.percentile(X[:, feature], np.arange(0, 100, 33))
+
             for threshold in thresholds:
-                # Compute the score on each branch and the information gain
-                y_left = y[X[:, i] < threshold]
-                y_right = y[X[:, i] >= threshold]
-                
+                y_left = y[X[:, feature] < threshold]
+                y_right = y[X[:, feature] >= threshold]
+
+                # Compute the gain (with similarity scores)
                 root_score = self.similarity_score(y)
                 left_score = self.similarity_score(y_left)
                 right_score = self.similarity_score(y_right)
-                info_gain = left_score + right_score - root_score - self.gamma
-                
-                # If info gain is lower than 0, don't keep the split
-                if info_gain < 0 :
-                    continue
-                # If info_gain is the best, update the best split
-                if info_gain > max_info_gain
-                    max_info_gain = info_gain
-                    best_split['feature'] = i
-                    best_split['threshold'] = threshold 
 
-        # Return best split
-        return best_split
-    
-    
-    def _split(self, X, y, best_split: dict):
+                gain = left_score + right_score - root_score - self.gamma
+
+                if gain > best_gain:
+                    best_feature = feature
+                    best_threshold = threshold
+                    best_gain = gain
+
+        return best_feature, best_threshold, best_gain
+
+    def split(self, X, y):
         """
-        Split the data into left and right nodes.
+        Split the dataset based on the best split point.
+
+        Parameters:
+        - X (numpy.ndarray): Input features.
+        - y (numpy.ndarray): Target variable.
+
+        Returns:
+        - feature (int): Index of the feature used for the split.
+        - threshold (float): Threshold value for the split.
+        - X_left (numpy.ndarray): Subset of X on the left side of the split.
+        - y_left (numpy.ndarray): Subset of y on the left side of the split.
+        - X_right (numpy.ndarray): Subset of X on the right side of the split.
+        - y_right (numpy.ndarray): Subset of y on the right side of the split.
         """
-        left_mask = X[:, best_split.feature] < best_split.threshold
-        right_mask = X[:, best_split.feature] >= best_split.threshold
-        return X[left_mask], X[right_mask], y[left_mask], y[right_mask]
-        
-    def _output_value(self, y):
+        feature, threshold, gain = self.best_split(X, y)
+
+        if gain == 0:
+            return None, None, None, None
+
+        X_left = X[:, feature] < threshold
+        y_left = y[X_left]
+        X_right = X[:, feature] >= threshold
+        y_right = y[X_right]
+
+        return feature, threshold, X_left, y_left, X_right, y_right
+
+    def build_tree(self, X, y, depth=0):
         """
-        Compute the output value for the leaf node.
-        output = - gradient / (hessian + lambda)
+        Recursively build the decision tree.
+
+        Parameters:
+        - X (numpy.ndarray): Input features.
+        - y (numpy.ndarray): Target variable.
+        - depth (int): Current depth of the tree.
+
+        Returns:
+        - node (Node): Root node of the built tree.
+        """
+        dataset = np.concatenate((X, y), axis=1)
+        n_samples, n_features = X.shape
+
+        # If stopping conditions not met
+        if n_samples >= self.min_samples_split and depth <= self.max_depth:
+            feature, threshold, X_left, y_left, X_right, y_right = self.split(X, y)
+
+            if feature is not None:
+                node = Node(feature, threshold)
+                node.left = self.build_tree(X_left, y_left, depth+1)
+                node.right = self.build_tree(X_right, y_right, depth+1)
+                return node
+
+        # Compute the leaf value
+        return Node(value=self.compute_leaf_value(y))
+
+    def fit(self, X, y):
+        """
+        Fit the XGBoostTree to the training data.
+
+        Parameters:
+        - X (numpy.ndarray): Input features.
+        - y (numpy.ndarray): Target variable.
+
+        Returns:
+        - None
+        """
+        self.tree = self.build_tree(X, y)
+        return None
+
+    def predict(self, X):
+        """
+        Predict the target variable for new input data.
+
+        Parameters:
+        - X (numpy.ndarray): Input features.
+
+        Returns:
+        - predictions (numpy.ndarray): Predicted target variable values.
+        """
+        def traverse(node, x):
+            if node.value is not None:  # leaf node
+                return node.value
+            elif x[node.feature] < node.threshold:
+                return traverse(node.left, x)
+            else:  # x[node.feature] >= node.threshold
+                return traverse(node.right, x)
+
+        predictions = [traverse(self.tree, x) for x in X]
+        return np.array(predictions)
+
+    def similarity_score(self, y):
+        """
+        Compute the similarity score for a given target variable.
+
+        Parameters:
+        - y (numpy.ndarray): Target variable.
+
+        Returns:
+        - score (float): Similarity score.
+        """
+        return np.sum(y)**2 / (len(y) + self._lambda)
+
+    def compute_leaf_value(self, y):
+        """
+        Compute the leaf value for the current node.
+
+        Parameters:
+        - y (numpy.ndarray): Target variable.
+
+        Returns:
+        - leaf_value (float): Leaf value.
         """
         return np.sum(y) / (len(y) + self._lambda)
-                
+    
+    
+
+    
+class XGBoostRegressor():
+    """ Constructor """
+    def __init__(self, n_estimators=100, loss=MeanSquaredError(),
+                 max_depth=32, min_samples_split=2,
+                 learning_rate=0.1, _lambda=1, gamma=0):
+        self.n_estimators = n_estimators
+        self.loss = loss
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.learning_rate = learning_rate
+        self._lambda = _lambda
+        self.gamma = gamma
+        self.trees = []
+        
+    def fit(self, X, y):
+        """
+        Fit the gradient boosting regressor to the training data.
+
+        Parameters:
+        - X (array-like): The input features of shape (n_samples, n_features).
+        - y (array-like): The target values of shape (n_samples,).
+
+        Returns:
+        None
+        """
+        # Initialize arrays of predicted residuals and terminal_regions (predictions)
+        residuals = np.zeros(shape=(X.shape[0], self.n_estimators+1))
+        predictions = np.zeros(shape=(X.shape[0], self.n_estimators+1))
+        
+        # Initial predictions = 0.5
+        initial_prediction = np.ones_like(y) * 0.5
+        predictions[:, 0] = initial_prediction
+        
+        # Compute initial residuals
+        residuals[:, 0] = - self.loss.gradient(y, initial_prediction)
+        
+        # Fit the trees
+        for m in range(self.n_estimators):
+            # Fit a tree to the residuals
+            tree = XGBoostTree(max_depth=self.max_depth,
+                                 min_samples_split=self.min_samples_split)
+            tree.fit(X, residuals[:,m])
             
- 
+            # make a new prediction and compute next residuals
+            new_prediction = predictions[:, m] + self.learning_rate * tree.predict(X)
+            predictions[:, m+1] = new_prediction
+            residuals[:, m+1] = - self.loss.gradient(y, new_prediction)
             
+            # Save the tree
+            self.trees.append(tree)
+            
+        return None
+    
+    
+    def predict(self, X):
+        """
+        Predict the target variable for new input data.
+
+        Parameters:
+        - X (array-like): The input features of shape (n_samples, n_features).
+
+        Returns:
+        - prediction (array-like): The predicted target values of shape (n_samples,).
+        """
+        # Initialize the prediction with the mean of the target variable
+        prediction = np.ones(X.shape[0]) * 0.5
+        
+        # Add the prediction of each tree
+        for tree in self.trees:
+            prediction += self.learning_rate * tree.predict(X)
+            
+        return prediction
+            
+        
+    
+    
     
