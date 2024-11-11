@@ -6,20 +6,6 @@ def euclidean_distance(x1, x2):
 
 
 def covariance(x: np.ndarray, y: np.ndarray) -> float:
-    """
-    Calculate the covariance between two arrays.
-
-    Args:
-        x (np.ndarray): The first input array.
-        y (np.ndarray): The second input array.
-
-    Returns:
-        float: The covariance between x and y.
-
-    Raises:
-        ValueError: If x and y do not have the same shape.
-
-    """
     try:
         assert x.shape == y.shape
         x_mean = np.mean(x, axis=0)   
@@ -32,6 +18,35 @@ def covariance(x: np.ndarray, y: np.ndarray) -> float:
         raise ValueError("x and y must have the same shape")
         
     return covariance
+
+def correlation(x: np.ndarray, y: np.ndarray) -> float:
+    try:
+        assert x.shape == y.shape
+        x_mean = np.mean(x, axis=0)   
+        y_mean = np.mean(y, axis=0)
+        n = len(x)
+        correlation = np.sum((x-x_mean)*(y-y_mean))/(np.sqrt(np.sum((x-x_mean)**2)*np.sum((y-y_mean)**2)))
+    
+    except AssertionError:
+        correlation = None
+        raise ValueError("x and y must have the same shape")
+        
+    return correlation
+
+def proximity_matrix(data: np.ndarray, distance_metric:str = 'euclidean') -> np.ndarray:
+
+    n = len(data)
+    proximity_matrix = np.zeros((n, n))
+    
+    distance = euclidean_distance if distance_metric == 'euclidean' else None
+    
+    promity_matrix = np.ndarray(shape=(n,n))
+    
+    for j in range(n):
+        for i in range(j+1, n):
+            proximity_matrix[i, j] = distance(data[i,:], data[j,:])
+    
+    return proximity_matrix.astype(float)
     
     
 def power_iteration_method(matrix: np.ndarray, n_iter: int, x_0:np.ndarray = None,convergence_criterion=1e-6):
